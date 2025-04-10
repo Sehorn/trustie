@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Trustie</title>
+</head>
+<body>
+  <h1>Trustie</h1>
+  <p>Find the best</p>
+
+  <input type="text" id="query" placeholder="Type a product..." />
+  <button onclick="search()">Find the Best</button>
+
+  <div id="results"></div>
+
+  <script>
+    function search() {
+      const query = document.getElementById('query').value;
+      fetch(`/search?q=${encodeURIComponent(query)}`)
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById('results').innerText = data.summary || 'No results';
+        });
+    }
+  </script>
+</body>
+</html>
