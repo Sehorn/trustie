@@ -5,13 +5,13 @@ import requests
 import os
 import json
 
-# Load environment variables
+# Load .env and OpenAI key
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 app = Flask(__name__)
 
-# 🔍 Subreddit matcher
+# 🔍 Curated subreddit matcher
 def find_related_subreddits(query):
     with open("subreddits.json", "r") as f:
         subreddit_map = json.load(f)
@@ -38,7 +38,29 @@ def find_related_subreddits(query):
 
     return list(matched)
 
-# 🔧 Reddit search + JSON comment scraping (upgraded!)
+# 🔮 GPT-powered subreddit suggestions
+def gpt_suggest_subreddits(query):
+    prompt = (
+        f"What are the 3–5 most relevant Reddit communities (subreddits) "
+        f"where people post and discuss '{query}'? "
+        f"Just return a simple Python list of subreddit names. "
+        f"No explanations, no markdown."
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4-turbo",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        raw = response.choices[0].message.content
+        print("🧠 GPT Suggested Subreddits:", raw)
+        suggested = eval(raw) if "[" in raw else []
+        return [s.strip().replace("r/", "") for s in suggested if isinstance(s, str)]
+    except Exception as e:
+        print("❌ GPT subreddit fetch failed:", e)
+        return []
+
+# 🕸️ Scrape comments from top threads in subreddits
 def scrape_reddit_threads(query, subreddits, max_threads=3, max_comments=10):
     print(f"🕵️ Scraping Reddit for: {query}")
     headers = {'User-Agent': 'Mozilla/5.0'}
@@ -50,23 +72,22 @@ def scrape_reddit_threads(query, subreddits, max_threads=3, max_comments=10):
 
         try:
             response = requests.get(search_url, headers=headers)
-            if response.status_code != 200:
-                print(f"❌ Failed search on r/{sub}")
-                continue
-
             posts = response.json().get('data', {}).get('children', [])
             if not posts:
                 print(f"❌ No results in r/{sub}")
                 continue
 
             for post in posts[:max_threads]:
+                title = post['data'].get('title', '').lower()
+                if not any(word in title for word in query.lower().split()):
+                    continue
+
                 permalink = post['data'].get('permalink')
                 thread_url = f"https://www.reddit.com{permalink}.json"
-                print(f"📎 Fetching thread: {thread_url}")
+                print(f"📎 Thread: {thread_url}")
 
                 thread_response = requests.get(thread_url, headers=headers)
                 if thread_response.status_code != 200:
-                    print(f"❌ Failed to fetch thread JSON")
                     continue
 
                 comments_data = thread_response.json()[1]['data']['children']
@@ -86,7 +107,7 @@ def scrape_reddit_threads(query, subreddits, max_threads=3, max_comments=10):
         except Exception as e:
             print(f"⚠️ Error scraping r/{sub}: {e}")
 
-    print("✅ Total high-score comments scraped:", len(all_comments))
+    print("✅ Total good comments:", len(all_comments))
     return all_comments
 
 @app.route('/')
@@ -99,8 +120,10 @@ def search():
     query = request.args.get('q')
     print(f"🔍 User query: {query}")
 
-    subreddits = find_related_subreddits(query)
-    print(f"🎯 Matched subreddits: {subreddits}")
+    mapped_subs = find_related_subreddits(query)
+    gpt_subs = gpt_suggest_subreddits(query)
+    subreddits = list(set(mapped_subs + gpt_subs))
+    print(f"📚 Final subreddit list: {subreddits}")
 
     comments = scrape_reddit_threads(query, subreddits)
 
@@ -108,14 +131,17 @@ def search():
         comments = [f"No strong Reddit replies found for '{query}'. Here's a general summary instead."]
 
     prompt = (
-        "Based on the following Reddit comments, extract and rank the top 5 product recommendations. "
-        "Include the product name, what it’s good for, and a short reason why it's popular. "
-        "Only use comments with helpful advice or personal experience.\n\n" + "\n".join(comments)
-    )
+    f"Summarize these Reddit comments into 2–3 specific product recommendations for '{query}'. "
+    "Return them as plain text bullet points, each starting with a dash. "
+    "Each bullet should include the product name, what it’s good for, and why it's recommended.\n\n"
+    + "\n".join(comments)
+)
+
+
 
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4-turbo",
             messages=[{"role": "user", "content": prompt}]
         )
         summary = response.choices[0].message.content
@@ -128,5 +154,5 @@ def search():
         return jsonify({'summary': "Oops! Something went wrong.", 'subreddits': subreddits})
 
 if __name__ == '__main__':
-    print("🚀 Trustie is live at http://localhost:5000")
+    print("🚀 Trustie is running at http://localhost:5000")
     app.run(debug=True)
