@@ -3,15 +3,49 @@
 <head>
   <meta charset="UTF-8">
   <title>Trustie</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+    }
+    button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    h1, h2 {
+      color: #333;
+    }
+    .results {
+      margin-top: 30px;
+    }
+  </style>
 </head>
 <body>
-  <h1>Trustie</h1>
-  <p>Find the best</p>
+  <h1>🦦 Trustie</h1>
+  <p>Find the best products—powered by Reddit and AI</p>
 
-  <input type="text" id="query" placeholder="Type a product..." />
+  <input type="text" id="query" placeholder="e.g. best monitor for gaming 2025" />
   <button onclick="search()">Find the Best</button>
 
-  <div id="results"></div>
+  <div class="results">
+    <h2>Recommended Subreddits:</h2>
+    <ul id="subreddits"></ul>
+
+    <h2>AI Summary:</h2>
+    <p id="summary">...</p>
+  </div>
 
   <script>
     function search() {
@@ -19,7 +53,18 @@
       fetch(`/search?q=${encodeURIComponent(query)}`)
         .then(res => res.json())
         .then(data => {
-          document.getElementById('results').innerText = data.summary || 'No results';
+          const summary = data.summary || 'No summary found.';
+          const subs = data.subreddits || [];
+
+          document.getElementById('summary').innerText = summary;
+
+          const subsList = document.getElementById('subreddits');
+          subsList.innerHTML = '';
+          subs.forEach(sub => {
+            const li = document.createElement('li');
+            li.innerText = `r/${sub}`;
+            subsList.appendChild(li);
+          });
         });
     }
   </script>
