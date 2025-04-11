@@ -1,30 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Trustie</title>
   <style>
     body {
-      background-color:#e4e5e2;
+      background-color: #e4e5e2;
       font-family: Arial, sans-serif;
       max-width: 600px;
       margin: 50px auto;
-      padding: 80px;
+      padding-top: 80px;
       text-align: center;
     }
+
     h1 {
       margin: 0;
     }
+
     h2 {
       text-align: center;
       font-size: 20px;
       transition: opacity 0.3s ease;
     }
+
     input {
       width: 80%;
       padding: 12px;
       font-size: 16px;
     }
+
     button {
       margin-top: 20px;
       padding: 12px 24px;
@@ -34,6 +39,7 @@
       border: none;
       cursor: pointer;
     }
+
     .results {
       margin-top: 40px;
       padding-top: 8px;
@@ -41,83 +47,102 @@
     }
 
     .loading-step-wrapper {
-  text-align: center;
-  margin: 24px 0;
-}
+      text-align: center;
+      margin: 24px 0;
+    }
 
-.loading-step-inner {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
+    .loading-step-inner {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-.emoji-bubble {
-  font-size: 18px;
-  animation: spin 2s linear infinite;
-  line-height: 1;
-  margin-right: 8px;
-}
+    .emoji-bubble {
+      font-size: 18px;
+      animation: spin 2s linear infinite;
+      line-height: 1;
+      margin-right: 8px;
+    }
 
-.loading-text {
-  font-size: 16px;
-  line-height: 1.2;
-}
+    .loading-text {
+      font-size: 16px;
+      line-height: 1.2;
+    }
 
-#summary {
-  margin-top: 20px;
-  margin-bottom: 40px;
-}
-
-
-#summary ul {
-  padding-left: 20px;
-  margin-top: 10px;
-  list-style-type: none;
-}
-
-#summary li {
-  margin-bottom: 14px;
-  line-height: 1.6;
-  font-size: 16px;
-}
-
-#subreddits {
-  text-align: center;
-  list-style: none;
-  padding-left: 0;
-}
-
-#subreddits li {
-  display: inline-block;
-  margin: 5px 10px;
-}
-
-#subreddits a,
-#summary a {
-  color: #5b7fff; /* your on-brand color */
-  text-decoration: none;
-  font-weight: 500;
-}
-
-#subreddits a:hover,
-#summary a:hover {
-  text-decoration: underline;
-  color: #3c5bff; /* slightly darker on hover */
-}
+    #summary {
+      margin-top: 20px;
+      margin-bottom: 40px;
+    }
 
 
+    #summary ul {
+      padding-left: 20px;
+      margin-top: 10px;
+      list-style-type: none;
+    }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
+    #summary li {
+      margin-bottom: 14px;
+      line-height: 1.6;
+      font-size: 16px;
+    }
+
+    #subreddits {
+      text-align: center;
+      list-style: none;
+      padding-left: 0;
+    }
+
+    #subreddits li {
+      display: inline-block;
+      margin: 5px 10px;
+    }
+
+    #subreddits a,
+    #summary a {
+      color: #5b7fff;
+      /* your on-brand color */
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    #subreddits a:hover,
+    #summary a:hover {
+      text-decoration: underline;
+      color: #3c5bff;
+      /* slightly darker on hover */
+    }
+
+    .trusted-badge {
+      background-color: #ffd966;
+      color: #333;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 8px;
+      font-weight: bold;
+    }
 
 
+
+
+
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
   </style>
 </head>
+
 <body>
-  <img src="{{ url_for('static', filename='trustie-logo.png') }}" alt="Trustie Logo" style="max-width: 180px; display: block; margin: 0 auto 5px; transform: translateX(-5px);"
-  >
+  <img src="{{ url_for('static', filename='trustie-logo.png') }}" alt="Trustie Logo"
+    style="max-width: 180px; display: block; margin: 0 auto 5px; transform: translateX(-5px);">
   <h1>Trustie</h1>
   <p style="margin-bottom: 32px;">Otter Powered Results</p>
 
@@ -130,14 +155,14 @@
 
   <div class="results">
     <h2 id="summary-heading" style="display: none;">Results:</h2>
-      <div id="loading-steps" style="margin-top: 20px;"></div>
-        <div id="summary" style="margin-top: 20px;"></div>
-    
+    <div id="loading-steps" style="margin-top: 20px;"></div>
+    <div id="summary" style="margin-top: 20px;"></div>
+
     <h2 id="subs-heading" style="display: none;">Recommended Subreddits:</h2>
-      <ul id="subreddits"></ul>
+    <ul id="subreddits"></ul>
 
   </div>
-  
+
 
   </div>
 
@@ -146,91 +171,104 @@
       const query = document.getElementById('query').value;
       const loadingSteps = document.getElementById('loading-steps');
       const subsList = document.getElementById('subreddits');
-  
+      const summaryBlock = document.getElementById('summary');
+      const subsHeading = document.getElementById('subs-heading');
+      const summaryHeading = document.getElementById('summary-heading');
+
+      // 🔄 RESET UI before starting new search
+      loadingSteps.innerHTML = "";
+      subsList.innerHTML = "";
+      summaryBlock.innerHTML = "";
+      subsHeading.style.display = 'none';
+      summaryHeading.style.display = 'none';
+
+
       const steps = [
-        "Searching Reddit for \"" + query + "\"...",
+        `Searching Reddit for "${query}"...`,
         "Finding relevant threads...",
         "Reading the comments from top posts...",
         "Calculating..."
       ];
-  
+
       const icons = ["🦦", "🔍", "🦦", "🔍"];
       loadingSteps.innerHTML = "";
       subsList.innerHTML = "";
-  
+
       let i = 0;
-  
+
       function showNextStep() {
         if (i >= steps.length) return;
-  
+
         loadingSteps.innerHTML = `
-  <div class="loading-step-wrapper">
-    <div class="loading-step-inner">
-      <span class="emoji-bubble">${icons[i]}</span>
-      <span class="loading-text">${steps[i]}</span>
-    </div>
-  </div>
-`;
-
-
-
-  
+          <div class="loading-step-wrapper">
+            <div class="loading-step-inner">
+              <span class="emoji-bubble">${icons[i]}</span>
+              <span class="loading-text">${steps[i]}</span>
+            </div>
+          </div>
+        `;
         i++;
         setTimeout(showNextStep, 1600);
       }
-  
+
       showNextStep();
-  
+
       fetch(`/search?q=${encodeURIComponent(query)}`)
         .then(res => res.json())
         .then(data => {
           document.getElementById('subs-heading').style.display = 'block';
-document.getElementById('summary-heading').style.display = 'block';
+          document.getElementById('summary-heading').style.display = 'block';
 
           loadingSteps.innerHTML = "";
           const summary = data.summary || 'No summary found.';
           const subs = data.subreddits || [];
-  
+
           let formatted = "";
-if (summary.includes("-") || summary.includes("•")) {
-  const lines = summary.split("\n");
-  formatted = lines
-    .filter(line => line.trim().startsWith("-") || line.trim().startsWith("•"))
-    .map(line => {
-  const text = line.replace(/^[-•]\s*/, "").trim();
-  const firstColon = text.indexOf(":");
-  const product = text.slice(0, firstColon).trim();
-  const rest = text.slice(firstColon + 1).trim();
+          if (summary.includes("-") || summary.includes("•")) {
+            const lines = summary.split("\n");
+            formatted = lines
+              .filter(line => line.trim().startsWith("-") || line.trim().startsWith("•"))
+              .map((line, index) => {
+                const text = line.replace(/^[-•]\s*/, "").trim();
+                const firstColon = text.indexOf(":");
 
-  const query = encodeURIComponent(product);
-  const searchLink = `https://www.google.com/search?tbm=shop&q=${query}`;
+                if (firstColon === -1) {
+                  return `<li>🦦 ${text}</li>`;
+                }
 
-  return `<li>🦦 <a href="${searchLink}" target="_blank" rel="noopener noreferrer">${product}</a>: ${rest}</li>`;
-})
+                const product = text.slice(0, firstColon).trim();
+                const rest = text.slice(firstColon + 1).trim();
+                const searchLink = `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(product)}`;
 
-    .join("");
-} else {
-  formatted = `<li>${summary.trim()}</li>`;
-}
+                const badge = index === 0 ? ' <span class="trusted-badge">⭐ Most Trusted</span>' : "";
+
+                return `<li>🦦 <a href="${searchLink}" target="_blank" rel="noopener noreferrer">${product}</a>: ${rest}${badge}</li>`;
+              })
+
+              .join("");
+          } else {
+            formatted = `<li>🦦 ${summary.trim()}</li>`;
+          }
 
           document.getElementById('summary').innerHTML = `<ul>${formatted}</ul>`;
-  
+
           subsList.innerHTML = '';
           subs.forEach(sub => {
-  const li = document.createElement('li');
-  const link = document.createElement('a');
-  link.href = `https://www.reddit.com/r/${sub}`;
-  link.innerText = `r/${sub}`;
-  link.target = "_blank";  // opens in new tab
-  link.rel = "noopener noreferrer"; // security best practice
-  li.appendChild(link);
-  subsList.appendChild(li);
-});
-
+            const li = document.createElement('li');
+            const link = document.createElement('a');
+            link.href = `https://www.reddit.com/r/${sub}`;
+            link.innerText = `r/${sub}`;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            li.appendChild(link);
+            subsList.appendChild(li);
+          });
         });
     }
   </script>
-  
-  
+
+
+
 </body>
+
 </html>

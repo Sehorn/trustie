@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 import requests
 import os
 import json
+import ast
+
 
 # Load .env and OpenAI key
 load_dotenv()
@@ -43,8 +45,8 @@ def gpt_suggest_subreddits(query):
     prompt = (
         f"What are the 3–5 most relevant Reddit communities (subreddits) "
         f"where people post and discuss '{query}'? "
-        f"Just return a simple Python list of subreddit names. "
-        f"No explanations, no markdown."
+        f"Only return a valid Python list, nothing else. Example: ['SuggestALaptop', 'buildapc']"
+
     )
 
     try:
@@ -54,7 +56,10 @@ def gpt_suggest_subreddits(query):
         )
         raw = response.choices[0].message.content
         print("🧠 GPT Suggested Subreddits:", raw)
-        suggested = eval(raw) if "[" in raw else []
+        try:
+            suggested = ast.literal_eval(raw)
+        except Exception:
+            suggested = []
         return [s.strip().replace("r/", "") for s in suggested if isinstance(s, str)]
     except Exception as e:
         print("❌ GPT subreddit fetch failed:", e)
@@ -136,8 +141,6 @@ def search():
     "Each bullet should include the product name, what it’s good for, and why it's recommended.\n\n"
     + "\n".join(comments)
 )
-
-
 
     try:
         response = client.chat.completions.create(
