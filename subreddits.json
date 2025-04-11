@@ -1,0 +1,69 @@
+{
+    "general": [
+      "BuyItForLife",
+      "ShutUpAndTakeMyMoney",
+      "Frugal",
+      "PersonalFinance",
+      "FinancialIndependence"
+    ],
+    "tech": [
+      "buildapc",
+      "pcmasterrace",
+      "HeadphoneAdvice",
+      "GamingLaptops",
+      "apple"
+    ],
+    "fashion_beauty": [
+      "malefashionadvice",
+      "femalefashionadvice",
+      "MakeupAddiction",
+      "SkincareAddiction"
+    ],
+    "food": [
+      "Cooking",
+      "FoodPorn",
+      "MealPrepSunday"
+    ],
+    "home_diy": [
+      "HomeImprovement",
+      "DIY",
+      "InteriorDesign",
+      "Frugal"
+    ],
+    "gaming_entertainment": [
+      "GameDeals",
+      "boardgames",
+      "NetflixBestOf",
+      "movies"
+    ],
+    "automotive": [
+      "cars",
+      "whatcarshouldIbuy",
+      "CarAV"
+    ],
+    "business_marketing": [
+      "ecommerce",
+      "smallbusiness",
+      "Entrepreneur",
+      "Marketing"
+    ],
+    "travel_lifestyle": [
+      "onebag",
+      "travel",
+      "digitalnomad"
+    ],
+    "health_wellness": [
+      "fitness",
+      "loseit",
+      "Running",
+      "yoga"
+    ],
+    "misc": [
+      "BuyItForLife",
+      "Frugal",
+      "PersonalFinance",
+      "FinancialIndependence",
+      "antiwork"
+    ]
+  }
+  
