@@ -5,6 +5,7 @@ import requests
 import os
 import json
 import ast
+import re
 
 
 # Load .env and OpenAI key
@@ -41,26 +42,36 @@ def find_related_subreddits(query):
     return list(matched)
 
 # 🔮 GPT-powered subreddit suggestions
-def gpt_suggest_subreddits(query):
-    prompt = (
-        f"What are the 3–5 most relevant Reddit communities (subreddits) "
-        f"where people post and discuss '{query}'? "
-        f"Only return a valid Python list, nothing else. Example: ['SuggestALaptop', 'buildapc']"
 
-    )
+def gpt_suggest_subreddits(query):
+    prompt = f"""
+Only return a Python list of subreddit names for: "{query}".
+No explanations, no intro, no formatting, no extra characters.
+The list should look like: ['example1', 'example2']
+"""
 
     try:
         response = client.chat.completions.create(
             model="gpt-4-turbo",
             messages=[{"role": "user", "content": prompt}]
         )
-        raw = response.choices[0].message.content
+        raw = response.choices[0].message.content.strip()
         print("🧠 GPT Suggested Subreddits:", raw)
+
         try:
             suggested = ast.literal_eval(raw)
         except Exception:
-            suggested = []
+            match = re.search(r"\[.*\]", raw)
+            if match:
+                try:
+                    suggested = ast.literal_eval(match.group())
+                except Exception:
+                    suggested = []
+            else:
+                suggested = []
+
         return [s.strip().replace("r/", "") for s in suggested if isinstance(s, str)]
+
     except Exception as e:
         print("❌ GPT subreddit fetch failed:", e)
         return []
@@ -136,7 +147,7 @@ def search():
         comments = [f"No strong Reddit replies found for '{query}'. Here's a general summary instead."]
 
     prompt = (
-    f"Summarize these Reddit comments into 2–3 specific product recommendations for '{query}'. "
+    f"Summarize these Reddit comments into 3-5 specific product recommendations for '{query}'. "
     "Return them as plain text bullet points, each starting with a dash. "
     "Each bullet should include the product name, what it’s good for, and why it's recommended.\n\n"
     + "\n".join(comments)

@@ -40,6 +40,39 @@
       cursor: pointer;
     }
 
+    #search-btn {
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 16px;
+      background: #007bff;
+      color: white;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: border 0.2s ease-in-out, background 0.2s ease-in-out;
+      width: 160px;
+      text-align: center;
+    }
+
+    #search-btn .btn-text {
+      transition: opacity 0.2s ease-in-out;
+    }
+
+    #search-btn:hover {
+      text-decoration: underline;
+    }
+
+    #search-btn:active {
+      transform: translateY(2px);
+      box-shadow: none;
+      background: #004bb3;
+    }
+
+
+
+
     .results {
       margin-top: 40px;
       padding-top: 8px;
@@ -113,6 +146,10 @@
       /* slightly darker on hover */
     }
 
+    .product-line {
+      white-space: nowrap;
+    }
+
     .trusted-badge {
       background-color: #ffd966;
       color: #333;
@@ -150,7 +187,10 @@
   <form onsubmit="search(); return false;">
     <input type="text" id="query" placeholder="e.g. best gaming monitor 2025" required />
     <br>
-    <button type="submit">Find the Best</button>
+    <button id="search-btn" type="submit">
+      <span class="btn-text">Find the Best</span>
+    </button>
+
   </form>
 
   <div class="results">
@@ -233,14 +273,15 @@
                 const firstColon = text.indexOf(":");
 
                 if (firstColon === -1) {
-                  return `<li>🦦 ${text}</li>`;
+                  return `<li>🦦 <span class="product-line"><a href="${searchLink}" target="_blank" rel="noopener noreferrer">${product}</a>${badge}</span>: ${rest}</li>`;
+
                 }
 
                 const product = text.slice(0, firstColon).trim();
                 const rest = text.slice(firstColon + 1).trim();
                 const searchLink = `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(product)}`;
 
-                const badge = index === 0 ? ' <span class="trusted-badge">⭐ Most Trusted</span>' : "";
+                const badge = index === 0 ? '<span class="trusted-badge">⭐ Most Trusted</span>' : "";
 
                 return `<li>🦦 <a href="${searchLink}" target="_blank" rel="noopener noreferrer">${product}</a>: ${rest}${badge}</li>`;
               })
