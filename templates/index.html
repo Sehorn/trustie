@@ -5,39 +5,43 @@
   <title>Trustie</title>
   <style>
     body {
+      background-color:#e4e5e2;
       font-family: Arial, sans-serif;
       max-width: 600px;
       margin: 50px auto;
       padding: 20px;
+      text-align: center;
     }
     input {
-      width: 100%;
-      padding: 10px;
+      width: 80%;
+      padding: 12px;
       font-size: 16px;
     }
     button {
-      margin-top: 10px;
-      padding: 10px 20px;
+      margin-top: 20px;
+      padding: 12px 24px;
       font-size: 16px;
       background: #007bff;
       color: white;
       border: none;
       cursor: pointer;
     }
-    h1, h2 {
-      color: #333;
-    }
     .results {
-      margin-top: 30px;
+      margin-top: 40px;
+      text-align: left;
     }
   </style>
 </head>
 <body>
-  <h1>🦦 Trustie</h1>
-  <p>Find the best products—powered by Reddit and AI</p>
+  <img src="{{ url_for('static', filename='trustie-logo.png') }}" alt="Trustie Logo" style="max-width: 200px; margin-bottom: 20px;">
+  <h1>Trustie</h1>
+  <p>Otter powered results</p>
 
-  <input type="text" id="query" placeholder="e.g. best monitor for gaming 2025" />
-  <button onclick="search()">Find the Best</button>
+  <form onsubmit="search(); return false;">
+    <input type="text" id="query" placeholder="e.g. best gaming monitor 2025" required />
+    <br>
+    <button type="submit">Find the Best</button>
+  </form>
 
   <div class="results">
     <h2>Recommended Subreddits:</h2>

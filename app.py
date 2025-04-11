@@ -1,12 +1,11 @@
 from flask import Flask, request, jsonify, render_template
 from openai import OpenAI
 from dotenv import load_dotenv
-from bs4 import BeautifulSoup
 import requests
 import os
 import json
 
-# Load env variables
+# Load environment variables
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -39,36 +38,55 @@ def find_related_subreddits(query):
 
     return list(matched)
 
-# 🕵️ Real Reddit scraping via Google
-def scrape_reddit_threads(query, subreddits, max_comments=5):
-    print(f"🕵️ Scraping Reddit for query: {query}")
+# 🔧 Reddit search + JSON comment scraping (upgraded!)
+def scrape_reddit_threads(query, subreddits, max_threads=3, max_comments=10):
+    print(f"🕵️ Scraping Reddit for: {query}")
     headers = {'User-Agent': 'Mozilla/5.0'}
     all_comments = []
 
     for sub in subreddits:
-        search_query = f"{query} site:reddit.com/r/{sub}"
-        google_url = f"https://www.google.com/search?q={requests.utils.quote(search_query)}"
-        print(f"🔎 Google search: {google_url}")
+        search_url = f"https://www.reddit.com/r/{sub}/search.json?q={requests.utils.quote(query)}&restrict_sr=1&sort=top&t=year"
+        print(f"🔎 Searching: {search_url}")
 
         try:
-            html = requests.get(google_url, headers=headers).text
-            soup = BeautifulSoup(html, 'html.parser')
-            link_tags = soup.select('a')
-            links = [a['href'].split('q=')[1].split('&')[0] for a in link_tags if '/url?q=' in a.get('href', '')]
-            thread_links = [l for l in links if 'reddit.com/r/' in l]
+            response = requests.get(search_url, headers=headers)
+            if response.status_code != 200:
+                print(f"❌ Failed search on r/{sub}")
+                continue
 
-            if thread_links:
-                thread_url = thread_links[0]
-                print(f"📎 Found thread: {thread_url}")
-                thread_html = requests.get(thread_url, headers=headers).text
-                thread_soup = BeautifulSoup(thread_html, 'html.parser')
-                comment_tags = thread_soup.select('div[data-test-id="comment"]')
-                comments = [tag.get_text().strip() for tag in comment_tags[:max_comments]]
-                all_comments.extend(comments)
+            posts = response.json().get('data', {}).get('children', [])
+            if not posts:
+                print(f"❌ No results in r/{sub}")
+                continue
+
+            for post in posts[:max_threads]:
+                permalink = post['data'].get('permalink')
+                thread_url = f"https://www.reddit.com{permalink}.json"
+                print(f"📎 Fetching thread: {thread_url}")
+
+                thread_response = requests.get(thread_url, headers=headers)
+                if thread_response.status_code != 200:
+                    print(f"❌ Failed to fetch thread JSON")
+                    continue
+
+                comments_data = thread_response.json()[1]['data']['children']
+                scored_comments = []
+
+                for c in comments_data:
+                    if c['kind'] != 't1':
+                        continue
+                    body = c['data'].get('body')
+                    score = c['data'].get('score', 0)
+                    if body and score >= 5:
+                        scored_comments.append((score, body.strip()))
+
+                top_comments = sorted(scored_comments, reverse=True)[:max_comments]
+                all_comments.extend([body for score, body in top_comments])
 
         except Exception as e:
-            print(f"⚠️ Error scraping subreddit {sub}: {e}")
+            print(f"⚠️ Error scraping r/{sub}: {e}")
 
+    print("✅ Total high-score comments scraped:", len(all_comments))
     return all_comments
 
 @app.route('/')
@@ -87,15 +105,13 @@ def search():
     comments = scrape_reddit_threads(query, subreddits)
 
     if not comments:
-        comments = [f"No real comments found for '{query}', generating a fallback summary."]
+        comments = [f"No strong Reddit replies found for '{query}'. Here's a general summary instead."]
 
     prompt = (
-    "Based on the following Reddit comments, extract and RANK the top ten product recommendations. "
-    "Include the product name, what it’s good for, and a brief explanation of why it’s popular. "
-    "Ignore vague or spammy replies.\n\n"
-    + "\n".join(comments)
-)
-
+        "Based on the following Reddit comments, extract and rank the top 5 product recommendations. "
+        "Include the product name, what it’s good for, and a short reason why it's popular. "
+        "Only use comments with helpful advice or personal experience.\n\n" + "\n".join(comments)
+    )
 
     try:
         response = client.chat.completions.create(
