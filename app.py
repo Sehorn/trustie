@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, render_template
 from openai import OpenAI
 from dotenv import load_dotenv
+import requests
 import os
 import json
 
@@ -10,7 +11,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 app = Flask(__name__)
 
-# 🔍 Find related subreddits based on user query
+# 🔍 Curated subreddit matcher
 def find_related_subreddits(query):
     with open("subreddits.json", "r") as f:
         subreddit_map = json.load(f)
@@ -18,12 +19,10 @@ def find_related_subreddits(query):
     matched = set()
     query_lower = query.lower()
 
-    # Match by category name
     for category, subs in subreddit_map.items():
         if category in query_lower:
             matched.update(subs)
 
-    # Fallback keyword matching
     keyword_to_subs = {
         "headphones": ["HeadphoneAdvice", "audiophile"],
         "monitor": ["Monitors", "buildapc", "pcmasterrace"],
@@ -39,6 +38,78 @@ def find_related_subreddits(query):
 
     return list(matched)
 
+# 🔮 GPT-powered subreddit suggestions
+def gpt_suggest_subreddits(query):
+    prompt = (
+        f"What are the 3–5 most relevant Reddit communities (subreddits) "
+        f"where people post and discuss '{query}'? "
+        f"Just return a simple Python list of subreddit names. "
+        f"No explanations, no markdown."
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4-turbo",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        raw = response.choices[0].message.content
+        print("🧠 GPT Suggested Subreddits:", raw)
+        suggested = eval(raw) if "[" in raw else []
+        return [s.strip().replace("r/", "") for s in suggested if isinstance(s, str)]
+    except Exception as e:
+        print("❌ GPT subreddit fetch failed:", e)
+        return []
+
+# 🕸️ Scrape comments from top threads in subreddits
+def scrape_reddit_threads(query, subreddits, max_threads=3, max_comments=10):
+    print(f"🕵️ Scraping Reddit for: {query}")
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    all_comments = []
+
+    for sub in subreddits:
+        search_url = f"https://www.reddit.com/r/{sub}/search.json?q={requests.utils.quote(query)}&restrict_sr=1&sort=top&t=year"
+        print(f"🔎 Searching: {search_url}")
+
+        try:
+            response = requests.get(search_url, headers=headers)
+            posts = response.json().get('data', {}).get('children', [])
+            if not posts:
+                print(f"❌ No results in r/{sub}")
+                continue
+
+            for post in posts[:max_threads]:
+                title = post['data'].get('title', '').lower()
+                if not any(word in title for word in query.lower().split()):
+                    continue
+
+                permalink = post['data'].get('permalink')
+                thread_url = f"https://www.reddit.com{permalink}.json"
+                print(f"📎 Thread: {thread_url}")
+
+                thread_response = requests.get(thread_url, headers=headers)
+                if thread_response.status_code != 200:
+                    continue
+
+                comments_data = thread_response.json()[1]['data']['children']
+                scored_comments = []
+
+                for c in comments_data:
+                    if c['kind'] != 't1':
+                        continue
+                    body = c['data'].get('body')
+                    score = c['data'].get('score', 0)
+                    if body and score >= 5:
+                        scored_comments.append((score, body.strip()))
+
+                top_comments = sorted(scored_comments, reverse=True)[:max_comments]
+                all_comments.extend([body for score, body in top_comments])
+
+        except Exception as e:
+            print(f"⚠️ Error scraping r/{sub}: {e}")
+
+    print("✅ Total good comments:", len(all_comments))
+    return all_comments
+
 @app.route('/')
 def index():
     print("🧭 Loading index.html")
@@ -49,21 +120,28 @@ def search():
     query = request.args.get('q')
     print(f"🔍 User query: {query}")
 
-    subreddits = find_related_subreddits(query)
-    print(f"🎯 Matched subreddits: {subreddits}")
+    mapped_subs = find_related_subreddits(query)
+    gpt_subs = gpt_suggest_subreddits(query)
+    subreddits = list(set(mapped_subs + gpt_subs))
+    print(f"📚 Final subreddit list: {subreddits}")
 
-    # 🔄 Simulated placeholder text instead of real Reddit comments
-    placeholder_comments = [
-        f"User is searching for: '{query}'",
-        f"Relevant subreddits: {', '.join(subreddits)}",
-        "Trustie will fetch and summarize real comments from these communities soon."
-    ]
+    comments = scrape_reddit_threads(query, subreddits)
 
-    prompt = f"Summarize this information as if you were analyzing Reddit comments:\n{chr(10).join(placeholder_comments)}"
+    if not comments:
+        comments = [f"No strong Reddit replies found for '{query}'. Here's a general summary instead."]
+
+    prompt = (
+    f"Summarize these Reddit comments into 2–3 specific product recommendations for '{query}'. "
+    "Return them as plain text bullet points, each starting with a dash. "
+    "Each bullet should include the product name, what it’s good for, and why it's recommended.\n\n"
+    + "\n".join(comments)
+)
+
+
 
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4-turbo",
             messages=[{"role": "user", "content": prompt}]
         )
         summary = response.choices[0].message.content
@@ -76,5 +154,5 @@ def search():
         return jsonify({'summary': "Oops! Something went wrong.", 'subreddits': subreddits})
 
 if __name__ == '__main__':
-    print("🚀 Trustie is live at http://localhost:5000")
+    print("🚀 Trustie is running at http://localhost:5000")
     app.run(debug=True)
