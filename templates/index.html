@@ -272,19 +272,18 @@
                 const text = line.replace(/^[-•]\s*/, "").trim();
                 const firstColon = text.indexOf(":");
 
-                if (firstColon === -1) {
-                  return `<li>🦦 <span class="product-line"><a href="${searchLink}" target="_blank" rel="noopener noreferrer">${product}</a>${badge}</span>: ${rest}</li>`;
-
-                }
-
-                const product = text.slice(0, firstColon).trim();
-                const rest = text.slice(firstColon + 1).trim();
+                const product = firstColon !== -1 ? text.slice(0, firstColon).trim() : text;
+                const rest = firstColon !== -1 ? text.slice(firstColon + 1).trim() : "";
                 const searchLink = `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(product)}`;
-
                 const badge = index === 0 ? '<span class="trusted-badge">⭐ Most Trusted</span>' : "";
 
-                return `<li>🦦 <a href="${searchLink}" target="_blank" rel="noopener noreferrer">${product}</a>: ${rest}${badge}</li>`;
+                if (firstColon === -1) {
+                  return `<li>🦦 ${product}</li>`;
+                }
+
+                return `<li>🦦 <span class="product-line"><a href="${searchLink}" target="_blank" rel="noopener noreferrer">${product}</a>${badge}</span>: ${rest}</li>`;
               })
+
 
               .join("");
           } else {
