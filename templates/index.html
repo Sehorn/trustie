@@ -256,19 +256,22 @@
       fetch(`/search?q=${encodeURIComponent(query)}`)
         .then(res => res.json())
         .then(data => {
-          document.getElementById('subs-heading').style.display = 'block';
-          document.getElementById('summary-heading').style.display = 'block';
-
-          loadingSteps.innerHTML = "";
           const summary = data.summary || 'No summary found.';
           const subs = data.subreddits || [];
 
-          let formatted = "";
-          if (summary.includes("-") || summary.includes("•")) {
+          // Clear loading spinner AFTER a delay to simulate processing
+          setTimeout(() => {
+            loadingSteps.innerHTML = "";
+
+            document.getElementById('subs-heading').style.display = 'block';
+            document.getElementById('summary-heading').style.display = 'block';
+
+            let formatted = "";
             const lines = summary.split("\n");
-            formatted = lines
-              .filter(line => line.trim().startsWith("-") || line.trim().startsWith("•"))
-              .map((line, index) => {
+            const bulletLines = lines.filter(line => line.trim().startsWith("-") || line.trim().startsWith("•"));
+
+            if (bulletLines.length > 0) {
+              formatted = bulletLines.map((line, index) => {
                 const text = line.replace(/^[-•]\s*/, "").trim();
                 const firstColon = text.indexOf(":");
 
@@ -282,28 +285,30 @@
                 }
 
                 return `<li>🦦 <span class="product-line"><a href="${searchLink}" target="_blank" rel="noopener noreferrer">${product}</a>${badge}</span>: ${rest}</li>`;
-              })
+              }).join("");
+            } else {
+              formatted = `<li>🦦 ${summary.trim()}</li>`;
+            }
 
+            document.getElementById('summary').innerHTML = `<ul>${formatted}</ul>`;
 
-              .join("");
-          } else {
-            formatted = `<li>🦦 ${summary.trim()}</li>`;
-          }
+            subsList.innerHTML = '';
+            subs.forEach(sub => {
+              const li = document.createElement('li');
+              const link = document.createElement('a');
+              link.href = `https://www.reddit.com/r/${sub}`;
+              link.innerText = `r/${sub}`;
+              link.target = "_blank";
+              link.rel = "noopener noreferrer";
+              li.appendChild(link);
+              subsList.appendChild(li);
+            });
 
-          document.getElementById('summary').innerHTML = `<ul>${formatted}</ul>`;
-
-          subsList.innerHTML = '';
-          subs.forEach(sub => {
-            const li = document.createElement('li');
-            const link = document.createElement('a');
-            link.href = `https://www.reddit.com/r/${sub}`;
-            link.innerText = `r/${sub}`;
-            link.target = "_blank";
-            link.rel = "noopener noreferrer";
-            li.appendChild(link);
-            subsList.appendChild(li);
-          });
+            document.getElementById('summary').classList.add('visible');
+            document.getElementById('subreddits').classList.add('visible');
+          }, 5000); // ← simulate 5s load even if cached
         });
+
     }
   </script>
 

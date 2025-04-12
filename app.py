@@ -6,6 +6,41 @@ import os
 import json
 import ast
 import re
+import time
+
+CACHE_FILE = "cache.json"
+
+def load_cache():
+    if not os.path.exists(CACHE_FILE):
+        return {}
+    with open(CACHE_FILE, "r") as f:
+        try:
+            return json.load(f)
+        except json.JSONDecodeError:
+            return {}
+
+def save_cache(cache):
+    with open(CACHE_FILE, "w") as f:
+        json.dump(cache, f)
+
+def get_cached_result(query):
+    cache = load_cache()
+    if query in cache:
+        entry = cache[query]
+        if time.time() - entry["timestamp"] < 86400:  # 24 hours
+            print("⚡ Using cached result")
+            return entry
+    return None
+
+def set_cache(query, summary, subreddits):
+    cache = load_cache()
+    cache[query] = {
+        "summary": summary,
+        "subreddits": subreddits,
+        "timestamp": time.time()
+    }
+    save_cache(cache)
+
 
 
 # Load .env and OpenAI key
@@ -136,22 +171,28 @@ def search():
     query = request.args.get('q')
     print(f"🔍 User query: {query}")
 
+    cached = get_cached_result(query)
+    if cached:
+        return jsonify({
+            "summary": cached["summary"],
+            "subreddits": cached["subreddits"]
+        })
+
+    # Everything below only runs if cache missed
     mapped_subs = find_related_subreddits(query)
     gpt_subs = gpt_suggest_subreddits(query)
     subreddits = list(set(mapped_subs + gpt_subs))
-    print(f"📚 Final subreddit list: {subreddits}")
 
     comments = scrape_reddit_threads(query, subreddits)
-
     if not comments:
-        comments = [f"No strong Reddit replies found for '{query}'. Here's a general summary instead."]
-
+        comments = [f"No strong Reddit replies found for '{query}'."]
+    
     prompt = (
-    f"Summarize these Reddit comments into 3-5 specific product recommendations for '{query}'. "
-    "Return them as plain text bullet points, each starting with a dash. "
-    "Each bullet should include the product name, what it’s good for, and why it's recommended.\n\n"
-    + "\n".join(comments)
-)
+        f"Summarize these Reddit comments into 2–3 specific product recommendations for '{query}'. "
+        "Return them as plain text bullet points, each starting with a dash. "
+        "Each bullet should include the product name, what it’s good for, and why it's recommended.\n\n"
+        + "\n".join(comments)
+    )
 
     try:
         response = client.chat.completions.create(
@@ -161,11 +202,14 @@ def search():
         summary = response.choices[0].message.content
         print("✅ AI Summary:", summary)
 
+        set_cache(query, summary, subreddits)
+
         return jsonify({'summary': summary, 'subreddits': subreddits})
 
     except Exception as e:
         print("❌ ERROR:", e)
         return jsonify({'summary': "Oops! Something went wrong.", 'subreddits': subreddits})
+
 
 if __name__ == '__main__':
     print("🚀 Trustie is running at http://localhost:5000")
