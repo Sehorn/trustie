@@ -1,27 +1,319 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Trustie</title>
+  <style>
+    body {
+      background-color: #e4e5e2;
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding-top: 80px;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0;
+    }
+
+    h2 {
+      text-align: center;
+      font-size: 20px;
+      transition: opacity 0.3s ease;
+    }
+
+    input {
+      width: 80%;
+      padding: 12px;
+      font-size: 16px;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 16px;
+      background: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    #search-btn {
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 16px;
+      background: #007bff;
+      color: white;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: border 0.2s ease-in-out, background 0.2s ease-in-out;
+      width: 160px;
+      text-align: center;
+    }
+
+    #search-btn .btn-text {
+      transition: opacity 0.2s ease-in-out;
+    }
+
+    #search-btn:hover {
+      text-decoration: underline;
+    }
+
+    #search-btn:active {
+      transform: translateY(2px);
+      box-shadow: none;
+      background: #004bb3;
+    }
+
+
+
+
+    .results {
+      margin-top: 40px;
+      padding-top: 8px;
+      text-align: left;
+    }
+
+    .loading-step-wrapper {
+      text-align: center;
+      margin: 24px 0;
+    }
+
+    .loading-step-inner {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .emoji-bubble {
+      font-size: 18px;
+      animation: spin 2s linear infinite;
+      line-height: 1;
+      margin-right: 8px;
+    }
+
+    .loading-text {
+      font-size: 16px;
+      line-height: 1.2;
+    }
+
+    #summary {
+      margin-top: 20px;
+      margin-bottom: 40px;
+    }
+
+
+    #summary ul {
+      padding-left: 20px;
+      margin-top: 10px;
+      list-style-type: none;
+    }
+
+    #summary li {
+      margin-bottom: 14px;
+      line-height: 1.6;
+      font-size: 16px;
+    }
+
+    #subreddits {
+      text-align: center;
+      list-style: none;
+      padding-left: 0;
+    }
+
+    #subreddits li {
+      display: inline-block;
+      margin: 5px 10px;
+    }
+
+    #subreddits a,
+    #summary a {
+      color: #5b7fff;
+      /* your on-brand color */
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    #subreddits a:hover,
+    #summary a:hover {
+      text-decoration: underline;
+      color: #3c5bff;
+      /* slightly darker on hover */
+    }
+
+    .product-line {
+      white-space: nowrap;
+    }
+
+    .trusted-badge {
+      background-color: #ffd966;
+      color: #333;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 8px;
+      font-weight: bold;
+    }
+
+
+
+
+
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
 </head>
+
 <body>
+  <img src="{{ url_for('static', filename='trustie-logo.png') }}" alt="Trustie Logo"
+    style="max-width: 180px; display: block; margin: 0 auto 5px; transform: translateX(-5px);">
   <h1>Trustie</h1>
-  <p>Find the best products</p>
+  <p style="margin-bottom: 32px;">Otter Powered Results</p>
 
-  <input type="text" id="query" placeholder="Type a product..." />
-  <button onclick="search()">Find the Best</button>
 
-  <div id="results"></div>
+  <form onsubmit="search(); return false;">
+    <input type="text" id="query" placeholder="e.g. best gaming monitor 2025" required />
+    <br>
+    <button id="search-btn" type="submit">
+      <span class="btn-text">Find the Best</span>
+    </button>
+
+  </form>
+
+  <div class="results">
+    <h2 id="summary-heading" style="display: none;">Results:</h2>
+    <div id="loading-steps" style="margin-top: 20px;"></div>
+    <div id="summary" style="margin-top: 20px;"></div>
+
+    <h2 id="subs-heading" style="display: none;">Recommended Subreddits:</h2>
+    <ul id="subreddits"></ul>
+
+  </div>
+
+
+  </div>
 
   <script>
     function search() {
       const query = document.getElementById('query').value;
+      const loadingSteps = document.getElementById('loading-steps');
+      const subsList = document.getElementById('subreddits');
+      const summaryBlock = document.getElementById('summary');
+      const subsHeading = document.getElementById('subs-heading');
+      const summaryHeading = document.getElementById('summary-heading');
+
+      // 🔄 RESET UI before starting new search
+      loadingSteps.innerHTML = "";
+      subsList.innerHTML = "";
+      summaryBlock.innerHTML = "";
+      subsHeading.style.display = 'none';
+      summaryHeading.style.display = 'none';
+
+
+      const steps = [
+        `Searching Reddit for "${query}"...`,
+        "Finding relevant threads...",
+        "Reading the comments from top posts...",
+        "Calculating..."
+      ];
+
+      const icons = ["🦦", "🔍", "🦦", "🔍"];
+      loadingSteps.innerHTML = "";
+      subsList.innerHTML = "";
+
+      let i = 0;
+
+      function showNextStep() {
+        if (i >= steps.length) return;
+
+        loadingSteps.innerHTML = `
+          <div class="loading-step-wrapper">
+            <div class="loading-step-inner">
+              <span class="emoji-bubble">${icons[i]}</span>
+              <span class="loading-text">${steps[i]}</span>
+            </div>
+          </div>
+        `;
+        i++;
+        setTimeout(showNextStep, 1600);
+      }
+
+      showNextStep();
+
       fetch(`/search?q=${encodeURIComponent(query)}`)
         .then(res => res.json())
         .then(data => {
-          document.getElementById('results').innerText = data.summary || 'No results';
+          const summary = data.summary || 'No summary found.';
+          const subs = data.subreddits || [];
+
+          // Clear loading spinner AFTER a delay to simulate processing
+          setTimeout(() => {
+            loadingSteps.innerHTML = "";
+
+            document.getElementById('subs-heading').style.display = 'block';
+            document.getElementById('summary-heading').style.display = 'block';
+
+            let formatted = "";
+            const lines = summary.split("\n");
+            const bulletLines = lines.filter(line => line.trim().startsWith("-") || line.trim().startsWith("•"));
+
+            if (bulletLines.length > 0) {
+              formatted = bulletLines.map((line, index) => {
+                const text = line.replace(/^[-•]\s*/, "").trim();
+                const firstColon = text.indexOf(":");
+
+                const product = firstColon !== -1 ? text.slice(0, firstColon).trim() : text;
+                const rest = firstColon !== -1 ? text.slice(firstColon + 1).trim() : "";
+                const searchLink = `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(product)}`;
+                const badge = index === 0 ? '<span class="trusted-badge">⭐ Most Trusted</span>' : "";
+
+                if (firstColon === -1) {
+                  return `<li>🦦 ${product}</li>`;
+                }
+
+                return `<li>🦦 <span class="product-line"><a href="${searchLink}" target="_blank" rel="noopener noreferrer">${product}</a>${badge}</span>: ${rest}</li>`;
+              }).join("");
+            } else {
+              formatted = `<li>🦦 ${summary.trim()}</li>`;
+            }
+
+            document.getElementById('summary').innerHTML = `<ul>${formatted}</ul>`;
+
+            subsList.innerHTML = '';
+            subs.forEach(sub => {
+              const li = document.createElement('li');
+              const link = document.createElement('a');
+              link.href = `https://www.reddit.com/r/${sub}`;
+              link.innerText = `r/${sub}`;
+              link.target = "_blank";
+              link.rel = "noopener noreferrer";
+              li.appendChild(link);
+              subsList.appendChild(li);
+            });
+
+            document.getElementById('summary').classList.add('visible');
+            document.getElementById('subreddits').classList.add('visible');
+          }, 5000); // ← simulate 5s load even if cached
         });
+
     }
   </script>
+
+
+
 </body>
+
 </html>
