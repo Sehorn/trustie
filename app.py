@@ -112,7 +112,7 @@ The list should look like: ['example1', 'example2']
         return []
 
 # 🕸️ Scrape comments from top threads in subreddits
-def scrape_reddit_threads(query, subreddits, max_threads=3, max_comments=10):
+def scrape_reddit_threads(query, subreddits, max_threads=6, max_comments=15):
     print(f"🕵️ Scraping Reddit for: {query}")
     headers = {'User-Agent': 'Mozilla/5.0'}
     all_comments = []
@@ -149,7 +149,7 @@ def scrape_reddit_threads(query, subreddits, max_threads=3, max_comments=10):
                         continue
                     body = c['data'].get('body')
                     score = c['data'].get('score', 0)
-                    if body and score >= 5:
+                    if body and score >= 10:
                         scored_comments.append((score, body.strip()))
 
                 top_comments = sorted(scored_comments, reverse=True)[:max_comments]
@@ -188,11 +188,13 @@ def search():
         comments = [f"No strong Reddit replies found for '{query}'."]
     
     prompt = (
-        f"Summarize these Reddit comments into 2–3 specific product recommendations for '{query}'. "
-        "Return them as plain text bullet points, each starting with a dash. "
-        "Each bullet should include the product name, what it’s good for, and why it's recommended.\n\n"
-        + "\n".join(comments)
+    f"Summarize these Reddit comments into 3 product recommendations for '{query}'. "
+    "Be specific — include full product names and why each is recommended. "
+    "Format as bullet points starting with a dash. "
+    "Do not suggest general categories or vague advice. Real Reddit favorites only.\n\n"
+    + "\n".join(comments)
     )
+
 
     try:
         response = client.chat.completions.create(
